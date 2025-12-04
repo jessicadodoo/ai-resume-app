@@ -1,130 +1,74 @@
+# app.py
 import streamlit as st
 from analyzer.extract import extract_text
-from analyzer.score import calculate_score
 from analyzer.detect_sections import detect_sections
-import json
+from analyzer.web_scraper import fetch_job_requirements
+from analyzer.score import score_resume
+from analyzer.analyzer import generate_suggestions_with_llm, generate_heuristic_suggestions
+from analyzer.report_generator import build_text_report
+import os
 
-# ----------------------
-# Streamlit Page Setup
-# ----------------------
-st.set_page_config(
-    page_title="AI Resume & Job Fit Analyzer",
-    page_icon="📄",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
+st.title("📄 AI Resume Analyzer — job-title driven (web-backed)")
 
-# ----------------------
-# Sidebar: Light/Dark Mode & Job Input
-# ----------------------
-st.sidebar.title("Settings & Job Search")
+# Sidebar inputs
+st.sidebar.header("Job & Options")
+job_title = st.sidebar.text_input("Preferred job title (e.g., cybersecurity analyst)", value=st.session_state.get("job_title",""))
+st.session_state["job_title"] = job_title
 
-# Light/Dark mode toggle
-mode = st.sidebar.radio("Select Theme", ["Light Mode", "Dark Mode"])
-if mode == "Dark Mode":
-    st.markdown(
-        """
-        <style>
-        body { background-color: #0E1117; color: #FFFFFF; }
-        .stProgress > div > div { background-color: #00ff00; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-else:
-    st.markdown(
-        """
-        <style>
-        body { background-color: #FFFFFF; color: #000000; }
-        .stProgress > div > div { background-color: #00ff00; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+use_llm = st.sidebar.checkbox("Use Groq LLM for polished suggestions (optional)", value=False)
 
-# Job position input
-job_title = st.sidebar.text_input("Job Title / Position you're applying for", "")
+uploaded = st.file_uploader("Upload your resume (PDF or DOCX)", type=["pdf","docx"])
 
-# ----------------------
-# Main Page
-# ----------------------
-st.title("📄 AI Resume & Job Fit Analyzer")
-st.write("Upload your resume (PDF or DOCX) and check how well it matches your desired job.")
+if uploaded and job_title.strip():
+    st.info("Extracting resume text...")
+    text = extract_text(uploaded)
+    st.success("Text extracted. Running analysis...")
 
-uploaded_file = st.file_uploader("Choose your resume", type=["pdf", "docx"])
+    sections_present, missing_sections = detect_sections(text)
 
-# ----------------------
-# Load keywords and job projects
-# ----------------------
-with open("analyzer/keywords.json") as f:
-    all_keywords = json.load(f)
+    st.info("Fetching live job requirements from the web...")
+    requirements = fetch_job_requirements(job_title)
 
-with open("analyzer/job_projects.json") as f:
-    job_projects = json.load(f)  # Example: { "Cybersecurity": ["Project1", "Project2"], ... }
+    st.info("Scoring resume...")
+    score, details = score_resume(text, requirements, sections_present)
 
-# ----------------------
-# Process Resume
-# ----------------------
-if uploaded_file and job_title:
-    text = extract_text(uploaded_file)
+    st.subheader("📊 Score")
+    st.progress(score)
+    st.write(f"**Score:** {score}/100")
 
-    # Section detection
-    sections = detect_sections(text)
-    st.header("✅ Sections Detected")
-    for sec, present in sections.items():
-        if present:
-            st.success(f"{sec}: Present")
-        else:
-            st.error(f"{sec}: Missing")
+    st.subheader("🔎 Detected sections")
+    st.write(sections_present)
+    if missing_sections:
+        st.warning(f"Missing: {missing_sections}")
 
-    # Resume Score
-    overall_score = calculate_score(text, all_keywords)
-    st.header("🏆 Overall Resume Score")
-    st.progress(overall_score / 100)
-    st.write(f"Score: **{overall_score}/100**")
+    st.subheader("🔑 Top requirements (from web scrape)")
+    st.write("Skills:", requirements.get("skills", [])[:20])
+    st.write("Tools:", requirements.get("tools", [])[:15])
+    st.write("Certifications:", requirements.get("certifications", [])[:10])
 
-    # Job-fit Score
-    job_keywords = job_projects.get(job_title, [])  # keywords for the job
-    matched_keywords = [kw for kw in job_keywords if kw.lower() in text.lower()]
-    job_fit_score = int((len(matched_keywords) / len(job_keywords)) * 100) if job_keywords else 0
+    st.subheader("✅ Matches found in resume")
+    st.write("Skills matched:", details.get("matched_skills", []))
+    st.write("Tools matched:", details.get("matched_tools", []))
+    st.write("Certifications matched:", details.get("matched_certs", []))
 
-    st.header(f"🎯 Job-Fit Score for '{job_title}'")
-    st.progress(job_fit_score / 100)
-    st.write(f"Job Fit: **{job_fit_score}%**")
+    # Suggestions: try LLM if asked and key present, otherwise fallback
+    suggestions_text = ""
+    if use_llm:
+        try:
+            suggestions_text = generate_suggestions_with_llm(text, job_title, requirements, details)
+        except Exception as e:
+            st.warning("LLM suggestion failed — falling back to heuristic suggestions.")
+            suggestions_text = generate_heuristic_suggestions(text, job_title, requirements, details)
+    else:
+        suggestions_text = generate_heuristic_suggestions(text, job_title, requirements, details)
 
-    # Keywords Table
-    st.header("🔑 Keyword Analysis")
-    st.subheader("Found Keywords ✅")
-    st.write(matched_keywords if matched_keywords else "None found")
-    st.subheader("Missing Keywords ❌")
-    missing_keywords = [kw for kw in job_keywords if kw not in matched_keywords]
-    st.write(missing_keywords if missing_keywords else "None missing")
+    st.subheader("📝 Suggestions")
+    st.text(suggestions_text)
 
-    # Recommendations & Projects
-    st.header("💡 Recommendations & Projects")
-    with st.expander("Click to see suggestions"):
-        if job_fit_score < 50:
-            st.write("- Consider adding more relevant skills and experiences.")
-            st.write("- Suggested projects to improve your profile:")
-            for p in missing_keywords:
-                st.write(f"  • {p}")
-        elif job_fit_score < 80:
-            st.write("- Good job! Add a few more skills/projects for better fit.")
-            for p in missing_keywords:
-                st.write(f"  • {p}")
-        else:
-            st.write("Excellent fit! Your resume matches this role very well.")
-
-    # Career Suggestions
-    st.header("🚀 Possible Career Paths")
-    st.write("Based on your skills and experience, you could consider applying to:")
-    # Example: naive suggestion based on matched keywords
-    suggested_jobs = []
-    for job, keywords in job_projects.items():
-        score = len([kw for kw in keywords if kw.lower() in text.lower()]) / max(1, len(keywords))
-        if score > 0.5:
-            suggested_jobs.append(job)
-    st.write(suggested_jobs if suggested_jobs else "No strong matches found — consider adding more skills/projects.")
+    # Build and provide downloadable report
+    report_text = build_text_report(job_title, score, requirements, details, suggestions_text)
+    st.download_button("Download full report", data=report_text, file_name="resume_analysis_report.txt", mime="text/plain")
 
 else:
-    st.info("Please enter the job title and upload your resume to analyze.")
+    st.info("Enter a job title in the sidebar and upload your resume to start.")

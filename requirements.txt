@@ -1,3 +1,9 @@
 streamlit
-pdfplumber
+pdfminer.six
 python-docx
+requests
+beautifulsoup4
+sentence-transformers
+scikit-learn
+python-dotenv
+groq  # optional, only if you plan to use Groq LLM
