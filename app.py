@@ -8,7 +8,7 @@ from analyzer.report_generator import build_text_report
 
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
-st.markdown("<h1 style='text-align:center; color:#4CAF50;'>📄 AI Resume Analyzer</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center; color:#FFFFFF;'>📄 AI Resume Analyzer</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # -------------------- SIDEBAR --------------------
