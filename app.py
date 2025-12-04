@@ -9,7 +9,7 @@ from analyzer.report_generator import build_text_report
 import os
 
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
-st.title("📄 AI Resume Analyzer — job-title driven (web-backed)")
+st.title("📄 AI Resume Analyzer(web-backed)")
 
 # Sidebar inputs
 st.sidebar.header("Job & Options")
