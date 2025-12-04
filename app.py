@@ -8,7 +8,50 @@ from analyzer.report_generator import build_text_report
 
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
-st.markdown("<h1 style='text-align:center; color:#FFFFFF;'>📄 AI Resume Analyzer</h1>", unsafe_allow_html=True)
+
+# -------------------- FLOATING BACKGROUND IMAGES --------------------
+st.markdown(
+    """
+    <style>
+    /* App background */
+    .stApp {
+        background: #f5f5f5;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Floating image styles */
+    .floating-img {
+        position: absolute;
+        width: 80px;
+        opacity: 0.15;
+        animation: float 12s ease-in-out infinite;
+        z-index: 0; /* behind the content */
+    }
+
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-25px); }
+        100% { transform: translateY(0px); }
+    }
+
+    /* Positions for images */
+    #img1 { top: 5%; left: 10%; animation-duration: 14s; }
+    #img2 { top: 60%; left: 80%; animation-duration: 18s; }
+    #img3 { top: 40%; left: 30%; animation-duration: 16s; }
+    #img4 { top: 75%; left: 50%; animation-duration: 20s; }
+    </style>
+
+    <!-- Floating images -->
+    <img src="https://i.ibb.co/2d5gM0X/leaf.png" class="floating-img" id="img1">
+    <img src="https://i.ibb.co/qx1n9VW/gear.png" class="floating-img" id="img2">
+    <img src="https://i.ibb.co/4S1xG0Z/cloud.png" class="floating-img" id="img3">
+    <img src="https://i.ibb.co/2d5gM0X/leaf.png" class="floating-img" id="img4">
+    """, unsafe_allow_html=True
+)
+
+# -------------------- HEADER --------------------
+st.markdown("<h1 style='text-align:center; color:#4CAF50; z-index:1;'>📄 AI Resume Analyzer</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # -------------------- SIDEBAR --------------------
@@ -115,6 +158,6 @@ else:
 # -------------------- FOOTER --------------------
 st.markdown("---")
 st.markdown(
-    "<p style='text-align:center;'>Made with ❤️ by Jessica | <a href='https://github.com/jessicadodoo/ai-resume-app'>GitHub Repo</a></p>", 
+    "<p style='text-align:center; z-index:1;'>Made with ❤️ by Jessica | <a href='https://github.com/jessicadodoo/ai-resume-app'>GitHub Repo</a></p>", 
     unsafe_allow_html=True
 )
